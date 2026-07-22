@@ -1,0 +1,265 @@
+/<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BimBam Buy-- Base de conocimiento local</title>
+<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0f1417;
+    --panel:#161d21;
+    --panel-border:#26312f;
+    --ink:#e9efef;
+    --ink-dim:#8ea39a;
+    --accent:#5fd3a6;
+    --accent-dim:#2c5a48;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "IBM Plex Sans", "Inter", system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    display:flex;
+    flex-direction:column;
+  }
+
+  header{
+    padding:18px 24px;
+    border-bottom:1px solid var(--panel-border);
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    flex-shrink:0;
+  }
+  header .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 8px var(--accent);
+    display:inline-block;
+  }
+  header h1{
+    font-size:15px;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    font-weight:600;
+    margin:0;
+    color:var(--ink);
+  }
+  header span.sub{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink-dim);
+  }
+
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns:1fr 300px;
+    min-height:0;
+  }
+
+  #chat-pane{
+    min-height:0;
+    border-right:1px solid var(--panel-border);
+    position:relative;
+  }
+
+  #n8n-chat{
+    height:100%;
+    width:100%;
+  }
+
+  aside{
+    background:var(--panel);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  aside .aside-head{
+    padding:16px 18px 10px;
+    border-bottom:1px solid var(--panel-border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  aside .aside-head h2{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-dim);
+    margin:0;
+    font-weight:600;
+  }
+  aside .aside-head button{
+    background:none;
+    border:1px solid var(--panel-border);
+    color:var(--ink-dim);
+    border-radius:5px;
+    font-size:11px;
+    padding:4px 8px;
+    cursor:pointer;
+    font-family:var(--mono);
+  }
+  aside .aside-head button:hover{
+    color:var(--accent);
+    border-color:var(--accent-dim);
+  }
+
+  #file-list{
+    list-style:none;
+    margin:0;
+    padding:6px 0;
+    overflow-y:auto;
+    flex:1;
+  }
+  #file-list li{
+    padding:10px 18px;
+    border-bottom:1px solid var(--panel-border);
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  #file-list .fname{
+    font-size:13px;
+    color:var(--ink);
+    word-break:break-word;
+  }
+  #file-list .fmeta{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--ink-dim);
+  }
+  #file-empty{
+    padding:18px;
+    font-size:12px;
+    color:var(--ink-dim);
+    font-family:var(--mono);
+    line-height:1.5;
+  }
+
+  /* Anular algunos estilos por defecto del widget de chat de n8n para integrarlo al tema */
+  :root{
+    --chat--color-primary: var(--accent);
+    --chat--color-primary-shade-50: #4fc296;
+    --chat--color-secondary: var(--accent-dim);
+    --chat--message--bot--background: #1d2528;
+    --chat--message--bot--color: var(--ink);
+    --chat--message--user--background: var(--accent-dim);
+    --chat--message--user--color: #eafff4;
+    --chat--body--background: var(--bg);
+    --chat--input--background: #131a1d;
+    --chat--input--text-color: var(--ink);
+    --chat--header--background: var(--bg);
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <span class="dot"></span>
+    <h1>BimBamBuy Base de conocimiento</h1>
+    <span class="sub">n8n · postgres+pgvector · ollama/nomic-embed-text</span>
+  </header>
+
+  <main>
+    <section id="chat-pane">
+      <div id="n8n-chat"></div>
+    </section>
+
+    <aside>
+      <div class="aside-head">
+        <h2>Archivos subidos</h2>
+        <button id="refresh-btn" type="button">Actualizar</button>
+      </div>
+      <ul id="file-list"></ul>
+      <div id="file-empty" style="display:none;">Todavía no hay archivos indexados. Sube un PDF desde el chat para verlo aquí.</div>
+    </aside>
+  </main>
+
+<script type="module">
+  import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+  // 1) URL del webhook de PRODUCCIÓN del workflow "Chat unificado" (nodo "Recibir mensaje").
+  //    La encuentras abriendo ese nodo en n8n -> pestaña "Webhook URLs" -> Production URL.
+  const CHAT_WEBHOOK_URL = 'http://localhost:5678/webhook/c0000000-1111-2222-3333-444444444444/chat';
+
+  // 2) URL del webhook del workflow "API - Listar archivos subidos".
+  const FILES_WEBHOOK_URL = 'http://localhost:5678/webhook/list-files';
+
+  createChat({
+    webhookUrl: CHAT_WEBHOOK_URL,
+    target: '#n8n-chat',
+    mode: 'fullscreen',
+    showWelcomeScreen: false,
+    allowFileUploads: true,
+    allowedFilesMimeTypes: 'application/pdf',
+    initialMessages: [
+      'Hola 👋 Puedes subir un PDF para agregarlo a la base de conocimiento, o hacerme una pregunta sobre los documentos ya subidos.'
+    ],
+    i18n: {
+      en: {
+        title: '',
+        subtitle: '',
+        footer: '',
+        getStarted: 'Nueva conversación',
+        inputPlaceholder: 'Escribe una pregunta o adjunta un PDF...',
+      },
+    },
+  });
+
+  // --- Panel lateral: lista de archivos subidos ---
+  const listEl = document.getElementById('file-list');
+  const emptyEl = document.getElementById('file-empty');
+  const refreshBtn = document.getElementById('refresh-btn');
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  async function loadFiles() {
+    try {
+      const res = await fetch(FILES_WEBHOOK_URL, { method: 'GET' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : (data.data || []);
+
+      listEl.innerHTML = '';
+      if (!rows.length) {
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      for (const row of rows) {
+        const li = document.createElement('li');
+        const name = document.createElement('div');
+        name.className = 'fname';
+        name.textContent = row.file_name || '(sin nombre)';
+        const meta = document.createElement('div');
+        meta.className = 'fmeta';
+        const chunks = row.chunks ? `${row.chunks} fragmentos · ` : '';
+        meta.textContent = chunks + formatDate(row.uploaded_at);
+        li.appendChild(name);
+        li.appendChild(meta);
+        listEl.appendChild(li);
+      }
+    } catch (err) {
+      console.error('No se pudo cargar la lista de archivos:', err);
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'No se pudo conectar con el endpoint de archivos. Revisa la URL configurada y que n8n esté corriendo.';
+    }
+  }
+
+  refreshBtn.addEventListener('click', loadFiles);
+  loadFiles();
+  setInterval(loadFiles, 8000); // refresca automáticamente cada 8s
+</script>
+</body>
+</html>
