@@ -1,0 +1,33 @@
+
+Guardar archivo como .env   no olvide el punto 
+
+# ==================== USUARIO DEL SISTEMA ====================
+#usuario para carpeta
+USER_UID=1000
+USER_GID=1000
+
+# ==================== POSTGRES ====================
+# Configuración de base de datos Postgres (con pgvector para el RAG)
+##
+POSTGRES_USER=n8n_admin
+POSTGRES_PASSWORD=MiPasswordSeguro123
+POSTGRES_DB=n8n_data
+
+# ==================== NGROK ====================
+# URL que te dará ngrok (la actualizarás después de iniciar el stack sin https://)
+
+NGROK_DOMAIN=bryant-unnourishing-unpayably.ngrok-free.dev
+SUBDOMAIN_NGROK=sin_el_https_dominio_asignado_ngrok
+
+# Token de autenticación de Ngrok (Consíguelo en dashboard.ngrok.com)
+NGROK_AUTHTOKEN=su_token_ngrok_ver_dashboard
+
+# ==================== PGADMIN ====================
+# pgadmin 
+PGADMIN_DEFAULT_EMAIL=dariohimo@gmail.com
+PGADMIN_DEFAULT_PASSWORD=soporte
+#PGADMIN_CONFIG_SERVER_MODE=False
+
+# ==================== (Opcional) Otros ====================
+# TIMEZONE=America/Bogota
+# TZ=America/Bogota
