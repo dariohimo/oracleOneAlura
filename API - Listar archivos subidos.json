@@ -1,0 +1,104 @@
+{
+  "name": "API - Listar archivos subidos",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "list-files",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "274d8117-909c-4314-8f8a-a731c6ab8976",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "f0000000-1111-2222-3333-444444444444"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT metadata->>'fileName' AS file_name, MIN(metadata->>'uploadedAt') AS uploaded_at, COUNT(*) AS chunks FROM documents WHERE metadata->>'fileName' IS NOT NULL GROUP BY metadata->>'fileName' ORDER BY MIN(metadata->>'uploadedAt') DESC;",
+        "options": {}
+      },
+      "id": "6151abca-226b-4158-98bb-590c9194b924",
+      "name": "Consultar archivos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "YYzyJjfML1BdiE74",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b2345137-1373-497b-b0aa-e3159ed12fdd",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        448,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Consultar archivos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar archivos": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "182128b7-eeb1-49a7-a101-96f6b80cecd6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bb4aa2e6daaa0bd9875a4e1c468e26d38035f83c3c926cd14fa70966c1a2b359"
+  },
+  "nodeGroups": [],
+  "id": "krB73toAdYRmSyqs",
+  "tags": []
+}
